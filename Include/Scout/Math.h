@@ -1,3 +1,5 @@
+// For vectors, using Vulkan's coordinate convention.
+
 #pragma once
 
 #include <cstdint>
@@ -60,51 +62,59 @@ namespace Scout
 
 	// Vectors ==================================
 
-	struct Vec4
+	struct Vec2
 	{
 		float x = 0;
 		float y = 0;
-		float z = 0;
-		float w = 1; // 1 by default since that's what we usually need when dealing with 4x4 transform matrices.
 
-		constexpr inline bool operator==(const Vec4& other) const
+		constexpr inline bool operator==(const Vec2& other) const
 		{
 			return	x == other.x &&
-				y == other.y &&
-				z == other.z &&
-				w == other.w;
+				y == other.y;
 		}
 
-		constexpr inline Vec4 operator+(const Vec4& other) const
+		constexpr inline Vec2 operator+(const Vec2& other) const
 		{
 			return
 			{
 				x + other.x,
-				y + other.y,
-				z + other.z,
-				w + other.w
+				y + other.y
 			};
 		}
 
-		constexpr inline Vec4 operator-(const Vec4& other) const
+		constexpr inline Vec2 operator-(const Vec2& other) const
 		{
 			return
 			{
 				x - other.x,
-				y - other.y,
-				z - other.z,
-				w - other.w
+				y - other.y
 			};
 		}
 
-		constexpr inline Vec4 operator-() const
+		constexpr inline Vec2 operator-() const
 		{
 			return
 			{
 				-x,
-				-y,
-				-z,
-				-w
+				-y
+			};
+		}
+
+		constexpr inline Vec2 operator*(const float scalar) const
+		{
+			return
+			{
+				x * scalar,
+				y * scalar
+			};
+		}
+
+		constexpr inline Vec2 operator/(const float scalar) const
+		{
+			return
+			{
+				x / scalar,
+				y / scalar
 			};
 		}
 	};
@@ -151,79 +161,153 @@ namespace Scout
 				-z
 			};
 		}
+
+		constexpr inline Vec3 operator*(const float scalar) const
+		{
+			return
+			{
+				x * scalar,
+				y * scalar,
+				z * scalar
+			};
+		}
+
+		constexpr inline Vec3 operator/(const float scalar) const
+		{
+			return
+			{
+				x / scalar,
+				y / scalar,
+				z / scalar
+			};
+		}
+
+		constexpr inline Vec2 xy() const
+		{
+			return
+			{
+				x,
+				y
+			};
+		}
 	};
 
-	struct Vec2
+	struct Vec4
 	{
 		float x = 0;
 		float y = 0;
+		float z = 0;
+		float w = 0;
 
-		constexpr inline bool operator==(const Vec2& other) const
+		constexpr inline bool operator==(const Vec4& other) const
 		{
 			return	x == other.x &&
-				y == other.y;
+				y == other.y &&
+				z == other.z &&
+				w == other.w;
 		}
 
-		constexpr inline Vec2 operator+(const Vec2& other) const
+		constexpr inline Vec4 operator+(const Vec4& other) const
 		{
 			return
 			{
 				x + other.x,
-				y + other.y
+				y + other.y,
+				z + other.z,
+				w + other.w
 			};
 		}
 
-		constexpr inline Vec2 operator-(const Vec2& other) const
+		constexpr inline Vec4 operator-(const Vec4& other) const
 		{
 			return
 			{
 				x - other.x,
-				y - other.y
+				y - other.y,
+				z - other.z,
+				w - other.w
 			};
 		}
 
-		constexpr inline Vec2 operator-() const
+		constexpr inline Vec4 operator-() const
 		{
 			return
 			{
 				-x,
-				-y
+				-y,
+				-z,
+				-w
+			};
+		}
+
+		constexpr inline Vec4 operator*(const float scalar) const
+		{
+			return
+			{
+				x * scalar,
+				y * scalar,
+				z * scalar,
+				w * scalar
+			};
+		}
+
+		constexpr inline Vec4 operator/(const float scalar) const
+		{
+			return
+			{
+				x / scalar,
+				y / scalar,
+				z / scalar,
+				w / scalar
+			};
+		}
+
+		constexpr inline Vec3 xyz() const
+		{
+			return
+			{
+				x,
+				y,
+				z
+			};
+		}
+
+		constexpr inline Vec2 xy() const
+		{
+			return
+			{
+				x,
+				y
 			};
 		}
 	};
 
-	constexpr const Vec2 VEC2_ZERO = { 0.0f, 0.0f };
-	constexpr const Vec2 VEC2_RIGHT = { 1.0f, 0.0f };
-	constexpr const Vec2 VEC2_UP = { 0.0f, 1.0f };
-	constexpr const Vec2 VEC2_LEFT = -VEC2_RIGHT;
-	constexpr const Vec2 VEC2_DOWN = -VEC2_UP;
-	constexpr const Vec2 VEC2_ONE = VEC2_RIGHT + VEC2_DOWN;
+	// Using Vulkan's coordinate convention.
+	constexpr const Vec2 VEC2_ZERO =	 { 0.0f,  0.0f };
+	constexpr const Vec2 VEC2_RIGHT =	 { 1.0f,  0.0f };
+	constexpr const Vec2 VEC2_UP =		 { 0.0f, -1.0f };
+	constexpr const Vec2 VEC2_LEFT =	-VEC2_RIGHT;
+	constexpr const Vec2 VEC2_DOWN =	-VEC2_UP;
+	constexpr const Vec2 VEC2_ONE =		 VEC2_RIGHT + VEC2_DOWN;
 
-	constexpr const Vec3 VEC3_ZERO = { 0.0f, 0.0f, 0.0f };
-	constexpr const Vec3 VEC3_RIGHT = { 1.0f, 0.0f, 0.0f };
-	constexpr const Vec3 VEC3_UP = { 0.0f, 1.0f, 0.0f };
-	constexpr const Vec3 VEC3_FRONT = { 0.0f, 0.0f, 1.0f };
-	constexpr const Vec3 VEC3_LEFT = -VEC3_RIGHT;
-	constexpr const Vec3 VEC3_BACK = -VEC3_FRONT;
-	constexpr const Vec3 VEC3_DOWN = -VEC3_UP;
-	constexpr const Vec3 VEC3_ONE = VEC3_RIGHT + VEC3_FRONT + VEC3_UP;
+	constexpr const Vec3 VEC3_ZERO =	 { VEC2_ZERO.x,		VEC2_ZERO.y,	0.0f };
+	constexpr const Vec3 VEC3_RIGHT =	 { VEC2_RIGHT.x,	VEC2_RIGHT.y,	0.0f };
+	constexpr const Vec3 VEC3_UP =		 { VEC2_UP.x,		VEC2_UP.y,		0.0f};
+	constexpr const Vec3 VEC3_FRONT =	 { VEC2_ZERO.x,		VEC2_ZERO.y,	1.0f };
+	constexpr const Vec3 VEC3_LEFT =	-VEC3_RIGHT;
+	constexpr const Vec3 VEC3_BACK =	-VEC3_FRONT;
+	constexpr const Vec3 VEC3_DOWN =	-VEC3_UP;
+	constexpr const Vec3 VEC3_ONE =		 VEC3_RIGHT + VEC3_FRONT + VEC3_UP;
 
-	// Following the right-hand-rule as well for 4D coordinates but distinguishing between "true" zero and unit vectors and "regular" versions of them that have the w component set to 1 since Vec4's are usually used in 4x4 matrices.
-	constexpr const Vec4 VEC4_TRUE_ZERO = { VEC3_ZERO.x,	VEC3_ZERO.y,	VEC3_ZERO.z,	0.0f };
-	constexpr const Vec4 VEC4_TRUE_RIGHT = { VEC3_RIGHT.x, VEC3_RIGHT.y,	VEC3_RIGHT.z,	0.0f };
-	constexpr const Vec4 VEC4_TRUE_FRONT = { VEC3_FRONT.x, VEC3_FRONT.y,	VEC3_FRONT.z,	0.0f };
-	constexpr const Vec4 VEC4_TRUE_UP = { VEC3_UP.x,	VEC3_UP.y,		VEC3_UP.z,		0.0f };
-	constexpr const Vec4 VEC4_W_UNIT = { VEC3_ZERO.x,	VEC3_ZERO.y,	VEC3_ZERO.z,	1.0f };
-	constexpr const Vec4 VEC4_ZERO = VEC4_TRUE_ZERO + VEC4_W_UNIT;
-	constexpr const Vec4 VEC4_RIGHT = VEC4_TRUE_RIGHT + VEC4_W_UNIT;
-	constexpr const Vec4 VEC4_FRONT = VEC4_TRUE_FRONT + VEC4_W_UNIT;
-	constexpr const Vec4 VEC4_UP = VEC4_TRUE_UP + VEC4_W_UNIT;
-	constexpr const Vec4 VEC4_TRUE_LEFT = -VEC4_TRUE_RIGHT;
-	constexpr const Vec4 VEC4_TRUE_BACK = -VEC4_TRUE_FRONT;
-	constexpr const Vec4 VEC4_TRUE_DOWN = -VEC4_TRUE_UP;
-	constexpr const Vec4 VEC4_LEFT = VEC4_TRUE_LEFT + VEC4_W_UNIT;
-	constexpr const Vec4 VEC4_BACK = VEC4_TRUE_BACK + VEC4_W_UNIT;
-	constexpr const Vec4 VEC4_DOWN = VEC4_TRUE_DOWN + VEC4_W_UNIT;
+	constexpr const Vec4 VEC4_ZERO =	 { VEC3_ZERO.x,		VEC3_ZERO.y,	VEC3_ZERO.z,	0.0f };
+	constexpr const Vec4 VEC4_W_UNIT =	 { VEC3_ZERO.x,		VEC3_ZERO.y,	VEC3_ZERO.z,	1.0f };
+	constexpr const Vec4 VEC4_RIGHT =	 { VEC3_RIGHT.x,	VEC3_RIGHT.y,	VEC3_RIGHT.z,	0.0f };
+	constexpr const Vec4 VEC4_FRONT =	 { VEC3_FRONT.x,	VEC3_FRONT.y,	VEC3_FRONT.z,	0.0f };
+	constexpr const Vec4 VEC4_UP =		 { VEC3_UP.x,		VEC3_UP.y,		VEC3_UP.z,		0.0f };
+	constexpr const Vec4 VEC4_LEFT =	-VEC4_RIGHT;
+	constexpr const Vec4 VEC4_BACK =	-VEC4_FRONT;
+	constexpr const Vec4 VEC4_DOWN =	-VEC4_UP;
+	constexpr const Vec4 VEC4_ONE =		 VEC4_RIGHT + VEC4_FRONT + VEC4_UP + VEC4_W_UNIT;
 
 	// Matrices ========================
 	
@@ -307,20 +391,127 @@ namespace Scout
 				imat[3][0], imat[3][1], imat[3][2], imat[3][3]
 			};
 		}
+
+		constexpr inline void SetTranslation(const Vec3 pos)
+		{
+			m03 = pos.x;
+			m13 = pos.y;
+			m23 = pos.z;
+		}
+		constexpr inline void AddTranslation(const Vec3 deltaPos)
+		{
+			m03 += deltaPos.x;
+			m13 += deltaPos.y;
+			m23 += deltaPos.z;
+		}
+
+		inline void SetScale(const Vec3 scale)
+		{
+			// TODO: take into accout existing rotation
+			throw std::runtime_error("Mat4x4::SetScale: implement scaling of an already rotated matrix.");
+
+			m00 = scale.x;
+			m11 = scale.y;
+			m22 = scale.z;
+		}
+
+		inline void SetRotation(const float yawRad, const float pitchRad, const float rollRad)
+		{
+			const float cosa = std::cosf(yawRad);
+			const float sina = std::sinf(yawRad);
+			const float cosb = std::cosf(pitchRad);
+			const float sinb = std::sinf(pitchRad);
+			const float cosy = std::cosf(rollRad);
+			const float siny = std::sinf(rollRad);
+
+			const Mat4x4 rotationMat =
+			{
+				cosb * cosy,	sina * sinb * cosy - cosa * siny,	cosa * sinb * cosy + sina * siny,	0.0f,
+				cosb * siny,	sina * sinb * siny + cosa * cosy,	cosa * sinb * siny - sina * cosy,	0.0f,
+				-sinb,			sina * cosb,						cosa * cosb,						0.0f,
+				0.0f,			0.0f,								0.0f,								1.0f
+			};
+
+			*this = rotationMat;
+		}
+		inline void AddRotation(const float yawRad, const float pitchRad, const float rollRad)
+		{
+			// https://en.wikipedia.org/wiki/Rotation_matrix
+
+			const float cosa = std::cosf(yawRad);
+			const float sina = std::sinf(yawRad);
+			const float cosb = std::cosf(pitchRad);
+			const float sinb = std::sinf(pitchRad);
+			const float cosy = std::cosf(rollRad);
+			const float siny = std::sinf(rollRad);
+
+			const Mat4x4 rotationMat =
+			{
+				cosb * cosy,	sina * sinb * cosy - cosa * siny,	cosa * sinb * cosy + sina * siny,	0.0f,
+				cosb * siny,	sina * sinb * siny + cosa * cosy,	cosa * sinb * siny - sina * cosy,	0.0f,
+				-sinb,			sina * cosb,						cosa * cosb,						0.0f,
+				0.0f,			0.0f,								0.0f,								1.0f
+			};
+
+			*this = rotationMat * (*this);
+		}
+		inline void AddRotation(const Vec3 axis, const float rad)
+		{
+			// Taken from: https://en.wikipedia.org/wiki/Rotation_matrix
+
+			const float cos = std::cosf(rad);
+			const float sin = std::sinf(rad);
+			const float mcos = 1.0f - cos;
+			const float x = axis.x;
+			const float y = axis.y;
+			const float z = axis.z;
+
+			const Mat4x4 rotationMat =
+			{
+				cos + x * x * mcos,	x * y * mcos - z * sin,	x * z * mcos + y * sin,	0.0f,
+				y * x * mcos + z * sin,	cos + y * y * mcos,	y * z * mcos - x * sin,	0.0f,
+				z * x * mcos - y * sin,	z * y * mcos + x * sin,	cos + z * z * mcos,	0.0f,
+				0.0f,			0.0f,			0.0f,			1.0f
+			};
+
+			*this = rotationMat * (*this);
+		}
 	};
 
-	constexpr inline Mat4x4 OrthogonalProjectionMatrix(const float near, const float far, const float right, const float left, const float bottom, const float top)
+	constexpr inline Mat4x4 TranslateMatrix(const Mat4x4& mat, const Vec3 pos)
 	{
-		// Rearranged version of: https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/orthographic-projection-matrix
+		return
+		{
+			mat.m00,	mat.m01,	mat.m02,	mat.m03 + pos.x,
+			mat.m10,	mat.m11,	mat.m12,	mat.m13 + pos.y,
+			mat.m20,	mat.m21,	mat.m22,	mat.m23 + pos.z,
+			mat.m30,	mat.m31,	mat.m32,	mat.m33
+		};
+	}
 
-		// assert(far > near && left > right && top > bottom && "Invalid bounds for an orthogonal projection matrix.");
+	constexpr inline Mat4x4 OrthogonalProjectionMatrix(const float left, const float right, const float top, const float bottom, const float near, const float far)
+	{
+		// https://learnwebgl.brown37.net/08_projections/projections_ortho.html
 
 		return
 		{
 			2.0f / (right - left),	0.0f,					0.0f,					-(right + left) / (right - left),
-			0.0f,					2.0f / (far - near),	0.0f,					-(far + near) / (far - near),
-			0.0f,					0.0f,					2.0f / (top - bottom),	-(top + bottom) / (top - bottom),
+			0.0f,					2.0f / (top - bottom),	0.0f,					-(top + bottom) / (top - bottom),
+			0.0f,					0.0f,					2.0f / (far - near),	-(far + near) / (far - near),
 			0.0f,					0.0f,					0.0f,					1.0f
+		};
+	}
+
+	constexpr inline Mat4x4 PerspectiveProjectionMatrix(const float left, const float right, const float top, const float bottom, const float near, const float far)
+	{
+		// https://learnwebgl.brown37.net/08_projections/projections_perspective.html
+
+		return
+		{
+			2.0f * near / (right - left),	0.0f,							0.0f,							-near * (right + left) / (right - left),
+			0.0f,							2.0f * near / (top - bottom),	0.0f,							-near * (top + bottom) / (top - bottom),
+			0.0f,							0.0f,							(far + near) / (far - near),	2.0f * far * near / (near - far),
+			0.0f,							0.0f,							-1.0f,							0.0f
 		};
 	}
 
@@ -386,7 +577,8 @@ namespace Scout
 		};
 	}
 
-	constexpr const Mat4x4 UNIT_ORTHO_PROJECTION = OrthogonalProjectionMatrix(0.0f, 1.0f, 0.5f, -0.5f, -0.5f, 0.5f);
+	constexpr const Mat4x4 UNIT_ORTHO_PROJECTION = OrthogonalProjectionMatrix(-0.5f, 0.5f, -0.5f, 0.5f, 1.0f, 2.0f);
+	constexpr const Mat4x4 UNIT_PERSPECTIVE_PROJECTION = PerspectiveProjectionMatrix(-0.5f, 0.5f, -0.5f, 0.5f, 1.0f, 2.0f);
 	constexpr const Mat4x4 MAT4_IDENTITY = Mat4x4{};
 
 	// Boxes =========================================
