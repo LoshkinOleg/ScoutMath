@@ -1,12 +1,12 @@
-// For vectors, using Vulkan's coordinate convention.
-
 #pragma once
 
 #include <cstdint>
-#include <cmath>
-#include <vector>
 #include <complex>
+#include <vector>
 #include <random>
+
+#include <glm.hpp>
+#include <gtc/matrix_transform.hpp>
 
 namespace Scout
 {
@@ -60,6 +60,378 @@ namespace Scout
 		return std::complex<float>(std::cosf(x), std::sinf(x));
 	}
 
+	// Boxes =========================================
+
+	struct Box
+	{
+		glm::vec3 min = {-0.5f, -0.5f, -0.5f};
+		glm::vec3 max = {0.5f,  0.5f,  0.5f};
+	};
+
+	constexpr const Box UNIT_BOX = {};
+
+	// Signals ==================================
+
+	inline float GenerateSineSample(const float n, const float sampleRate, const float frequency)
+	{
+		// 2*PI is a full rotation. n/sampleRate ensures that the full rotation happens at 1 Hz. frequency then changes the pitch of this "unit pitch".
+		return std::sinf((2.0f * PIf * n / sampleRate) * frequency);
+	}
+
+	inline double GenerateSineSample(const double n, const double sampleRate, const double frequency)
+	{
+		// 2*PI is a full rotation. n/sampleRate ensures that the full rotation happens at 1 Hz. frequency then changes the pitch of this "unit pitch".
+		return std::sin((2.0 * PI * n / sampleRate) * frequency);
+	}
+
+	inline std::vector<double> GenerateSineSignal(const double frequency, const double phaseOffset, const std::uint64_t duration)
+	{
+		std::vector<double> returnVal(duration, 0.0);
+
+		for(size_t i = 0; i < duration; i++)
+		{
+			returnVal[i] = std::sin((double)i * PI / frequency + phaseOffset);
+		}
+
+		return returnVal;
+	}
+
+	inline std::vector<float> GenerateSineSignal(const float frequency, const float phaseOffset, const std::uint64_t duration)
+	{
+		std::vector<float> returnVal(duration, 0.0f);
+
+		for(size_t i = 0; i < duration; i++)
+		{
+			returnVal[i] = std::sinf((float)i * PIf / frequency + phaseOffset);
+		}
+
+		return returnVal;
+	}
+
+	constexpr inline void ScaleSignal(std::vector<double>& signal, const double scalar)
+	{
+		for(auto& sample : signal)
+		{
+			sample *= scalar;
+		}
+	}
+
+	constexpr inline void ScaleSignal(std::vector<float>& signal, const float scalar)
+	{
+		for(auto& sample : signal)
+		{
+			sample *= scalar;
+		}
+	}
+
+	inline std::vector<float> WhiteNoise(const std::uint64_t N, const size_t seed)
+	{
+		static auto e = std::default_random_engine((unsigned int)seed);
+		static auto d = std::uniform_real_distribution<float>(-1.0f, 1.0f);
+
+		std::vector<float> returnVal(N);
+		for(size_t i = 0; i < N; ++i)
+		{
+			returnVal[i] = d(e);
+		}
+		return returnVal;
+	}
+
+	inline std::vector<float> GaussianWhiteNoise(const std::uint64_t N, const size_t seed)
+	{
+		static auto e = std::default_random_engine((unsigned int)seed);
+		static auto d = std::normal_distribution<float>(0.0f, 1.0f);
+
+		std::vector<float> returnVal(N);
+		for(size_t i = 0; i < N; ++i)
+		{
+			returnVal[i] = d(e);
+		}
+		return returnVal;
+	}
+
+	inline void DFT(std::vector<std::complex<float>>& out, const std::vector<float>& x, const std::uint64_t K)
+	{
+		const std::uint64_t N = (std::uint64_t)x.size();
+		std::vector<std::complex<float>>& y = out;
+
+		std::fill(y.begin(), y.end(), std::complex<float>(0.0f, 0.0f));
+
+		for(std::uint64_t k = 0; k < K; ++k)
+		{
+			for(std::uint64_t n = 0; n < N; ++n)
+			{
+				y[k] += x[n] * EulersFormula(-2.0f * PIf * k * n / N);
+			}
+		}
+	}
+
+	inline void IDFT(std::vector<float>& out, const std::vector<std::complex<float>>& y, const std::uint64_t N)
+	{
+		const std::uint64_t K = (std::uint64_t)y.size();
+		std::vector<float>& x = out;
+
+		std::fill(x.begin(), x.end(), 0.0f);
+
+		for(std::uint64_t n = 0; n < N; ++n)
+		{
+			for(std::uint64_t k = 0; k < K; ++k)
+			{
+				x[n] += (y[k] * EulersFormula(2.0f * PIf * k * n / N)).real();
+			}
+			x[n] /= N;
+			x[n] = std::clamp(x[n], -1.0f, 1.0f);
+		}
+	}
+
+	constexpr inline void InterleaveSignal(std::vector<double>& data, const std::uint64_t nrOfChannels)
+	{
+		const size_t len = data.size();
+		const std::vector<double> dataCopy = data;
+
+		std::vector<size_t> channelOffsets(nrOfChannels, 0);
+		for(size_t i = 0; i < nrOfChannels; i++)
+		{
+			channelOffsets[i] = len / nrOfChannels * i;
+		}
+
+		for(size_t i = 0; i < len / nrOfChannels; i++)
+		{
+			for(size_t chan = 0; chan < nrOfChannels; chan++)
+			{
+				data[nrOfChannels * i + chan] = dataCopy[channelOffsets[chan] + i];
+			}
+		}
+	}
+
+	constexpr inline void InterleaveSignal(std::vector<float>& data, const std::uint64_t nrOfChannels)
+	{
+		const size_t len = data.size();
+		const std::vector<float> dataCopy = data;
+
+		std::vector<size_t> channelOffsets(nrOfChannels, 0);
+		for(size_t i = 0; i < nrOfChannels; i++)
+		{
+			channelOffsets[i] = len / nrOfChannels * i;
+		}
+
+		for(size_t i = 0; i < len / nrOfChannels; i++)
+		{
+			for(size_t chan = 0; chan < nrOfChannels; chan++)
+			{
+				data[nrOfChannels * i + chan] = dataCopy[channelOffsets[chan] + i];
+			}
+		}
+	}
+
+	constexpr inline void UninterleaveSignal(std::vector<double>& data, const std::uint64_t nrOfChannels)
+	{
+		const auto len = data.size();
+		const auto singleChannelLen = data.size() / nrOfChannels;
+		std::vector<std::vector<double>> channels(nrOfChannels, std::vector<double>(singleChannelLen, 0.0f));
+
+		for(size_t i = 0; i < len; i += nrOfChannels)
+		{
+			for(size_t chan = 0; chan < nrOfChannels; chan++)
+			{
+				channels[chan][i / nrOfChannels] = data[i];
+			}
+		}
+
+		for(size_t i = 0; i < nrOfChannels; i++)
+		{
+			std::copy(channels[i].begin(), channels[i].end(), data.begin() + i * singleChannelLen);
+		}
+	}
+
+	constexpr inline void UninterleaveSignal(std::vector<float>& data, const std::uint64_t nrOfChannels)
+	{
+		const auto len = data.size();
+		const auto singleChannelLen = data.size() / nrOfChannels;
+		std::vector<std::vector<float>> channels(nrOfChannels, std::vector<float>(singleChannelLen, 0.0f));
+
+		for(size_t i = 0; i < len; i += nrOfChannels)
+		{
+			for(size_t chan = 0; chan < nrOfChannels; chan++)
+			{
+				channels[chan][i / nrOfChannels] = data[i];
+			}
+		}
+
+		for(size_t i = 0; i < nrOfChannels; i++)
+		{
+			std::copy(channels[i].begin(), channels[i].end(), data.begin() + i * singleChannelLen);
+		}
+	}
+
+	constexpr inline void SumSignalsInPlace(std::vector<double>& data0, const std::vector<double>& data1)
+	{
+		for(size_t i = 0; i < data1.size(); i++)
+		{
+			data0[i] += data1[i];
+		}
+	}
+
+	constexpr inline void SumSignalsInPlace(std::vector<float>& data0, const std::vector<float>& data1)
+	{
+		for(size_t i = 0; i < data1.size(); i++)
+		{
+			data0[i] += data1[i];
+		}
+	}
+
+	constexpr inline void InverseSignal(std::vector<double>& data)
+	{
+		for(auto& sample : data)
+		{
+			sample = -sample;
+		}
+	}
+
+	constexpr inline void InverseSignal(std::vector<float>& data)
+	{
+		for(auto& sample : data)
+		{
+			sample = -sample;
+		}
+	}
+
+	constexpr inline std::vector<double> ComputeSignalsDifference(const std::vector<double>& data0, const std::vector<double>& data1)
+	{
+		std::vector<double> returnVal = data0;
+		InverseSignal(returnVal);
+		SumSignalsInPlace(returnVal, data1);
+		return returnVal;
+	}
+
+	constexpr inline std::vector<float> ComputeSignalsDifference(const std::vector<float>& data0, const std::vector<float>& data1)
+	{
+		std::vector<float> returnVal = data0;
+		InverseSignal(returnVal);
+		SumSignalsInPlace(returnVal, data1);
+		return returnVal;
+	}
+
+	constexpr inline void ClampSignal(std::vector<double>& data)
+	{
+		for(auto& sample : data)
+		{
+			sample = std::clamp(sample, -1.0, 1.0);
+		}
+	}
+
+	constexpr inline void ClampSignal(std::vector<float>& data)
+	{
+		for(auto& sample : data)
+		{
+			sample = std::clamp(sample, -1.0f, 1.0f);
+		}
+	}
+
+	constexpr inline void NormalizeSignal(std::vector<double>& data)
+	{
+		const auto len = data.size();
+
+		// Find bounds.
+		double maxSample = std::numeric_limits<double>::min();
+		double minSample = std::numeric_limits<double>::max();
+		for(size_t sample = 0; sample < len; sample++)
+		{
+			const double currentSample = data[sample];
+			maxSample = maxSample < currentSample ? currentSample : maxSample;
+			minSample = minSample > currentSample ? currentSample : minSample;
+		}
+
+		// Normalize.
+		for(size_t sample = 0; sample < len; sample++)
+		{
+			data[sample] = RemapToRange(minSample, maxSample, -1.0, 1.0, data[sample]);
+		}
+	}
+
+	constexpr inline void NormalizeSignal(std::vector<float>& data)
+	{
+		const auto len = data.size();
+
+		// Find bounds.
+		float maxSample = std::numeric_limits<float>::min();
+		float minSample = std::numeric_limits<float>::max();
+		for(size_t sample = 0; sample < len; sample++)
+		{
+			const float currentSample = data[sample];
+			maxSample = maxSample < currentSample ? currentSample : maxSample;
+			minSample = minSample > currentSample ? currentSample : minSample;
+		}
+
+		// Normalize.
+		for(size_t sample = 0; sample < len; sample++)
+		{
+			data[sample] = RemapToRange(minSample, maxSample, -1.0f, 1.0f, data[sample]);
+		}
+	}
+
+	// GLM ==================================
+	// Using OpenGL's 3D coordinate conventions.
+	constexpr const glm::vec4 VEC4_ZERO =	{ 0.0f, 0.0f, 0.0f, 0.0f };
+	constexpr const glm::vec4 VEC4_W =		{ 0.0f, 0.0f, 0.0f, 1.0f };
+	constexpr const glm::vec4 VEC4_RIGHT =	{ 1.0f, 0.0f, 0.0f, 0.0f };
+	constexpr const glm::vec4 VEC4_UP =		{ 0.0f, 1.0f, 0.0f, 0.0f };
+	constexpr const glm::vec4 VEC4_BACK =	{ 0.0f, 0.0f, 1.0f, 0.0f };
+	constexpr const glm::vec4 VEC4_LEFT =	-VEC4_RIGHT;
+	constexpr const glm::vec4 VEC4_DOWN =	-VEC4_UP;
+	constexpr const glm::vec4 VEC4_FRONT =	-VEC4_BACK;
+	constexpr const glm::vec4 VEC4_ONE =	VEC4_RIGHT + VEC4_DOWN + VEC4_FRONT + VEC4_W;
+
+	constexpr const glm::vec3 VEC3_ZERO =	{ VEC4_ZERO.x,	VEC4_ZERO.y,	VEC4_ZERO.z };
+	constexpr const glm::vec3 VEC3_RIGHT =	{ VEC4_RIGHT.x,	VEC4_RIGHT.y,	VEC4_RIGHT.z };
+	constexpr const glm::vec3 VEC3_DOWN =	{ VEC4_DOWN.x,	VEC4_DOWN.y,	VEC4_DOWN.z };
+	constexpr const glm::vec3 VEC3_FRONT =	{ VEC4_FRONT.x, VEC4_FRONT.y,	VEC4_FRONT.z };
+	constexpr const glm::vec3 VEC3_LEFT =	-VEC3_RIGHT;
+	constexpr const glm::vec3 VEC3_UP =		-VEC3_DOWN;
+	constexpr const glm::vec3 VEC3_BACK =	-VEC3_FRONT;
+	constexpr const glm::vec3 VEC3_ONE =	VEC3_RIGHT + VEC3_DOWN + VEC3_FRONT;
+
+	constexpr const glm::vec2 VEC2_ZERO =	{ VEC3_ZERO.x,	VEC3_ZERO.y };
+	constexpr const glm::vec2 VEC2_RIGHT =	{ VEC3_RIGHT.x,	VEC3_RIGHT.y };
+	constexpr const glm::vec2 VEC2_DOWN =	{ VEC3_DOWN.x,	VEC3_DOWN.y };
+	constexpr const glm::vec2 VEC2_LEFT =	-VEC2_RIGHT;
+	constexpr const glm::vec2 VEC2_UP =		-VEC2_DOWN;
+	constexpr const glm::vec2 VEC2_ONE =	VEC2_RIGHT + VEC2_DOWN;
+
+	constexpr const glm::mat4 MAT4_IDENTITY = glm::identity<glm::mat4>();
+
+	constexpr const glm::vec4 COLOR_CLEAR = {0.0f, 0.0f, 0.0f, 0.0f};
+	constexpr const glm::vec4 COLOR_BLACK = {0.0f, 0.0f, 0.0f, 1.0f};
+	constexpr const glm::vec4 COLOR_RED =	{1.0f, 0.0f, 0.0f, 1.0f};
+	constexpr const glm::vec4 COLOR_GREEN = {0.0f, 1.0f, 0.0f, 1.0f};
+	constexpr const glm::vec4 COLOR_BLUE =	{0.0f, 0.0f, 1.0f, 1.0f};
+	constexpr const glm::vec4 COLOR_WHITE = {1.0f, 1.0f, 1.0f, 1.0f};
+
+	const glm::mat4 UNIT_ORTHOGRAPHIC = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f);
+	const glm::mat4 UNIT_PERSPECTIVE = glm::perspective(PIf * 0.5f, 1.0f, 0.01f, 1.0f);
+}
+
+
+
+
+
+
+
+
+// OLD CODE =============================================================
+/*
+
+// For vectors, using Vulkan's coordinate convention.
+#pragma once
+
+#include <cstdint>
+#include <cmath>
+#include <vector>
+#include <complex>
+#include <random>
+
+namespace Scout
+{
 	// Vectors ==================================
 
 	struct Vec2
@@ -580,314 +952,5 @@ namespace Scout
 	constexpr const Mat4x4 UNIT_ORTHO_PROJECTION = OrthogonalProjectionMatrix(-0.5f, 0.5f, -0.5f, 0.5f, 1.0f, 2.0f);
 	constexpr const Mat4x4 UNIT_PERSPECTIVE_PROJECTION = PerspectiveProjectionMatrix(-0.5f, 0.5f, -0.5f, 0.5f, 1.0f, 2.0f);
 	constexpr const Mat4x4 MAT4_IDENTITY = Mat4x4{};
-
-	// Boxes =========================================
-
-	struct Box
-	{
-		Vec3 min = {-0.5f, -0.5f, -0.5f};
-		Vec3 max = { 0.5f,  0.5f,  0.5f};
-	};
-
-	constexpr const Box UNIT_BOX = {};
-
-	// Signals ==================================
-
-	inline float GenerateSineSample(const float n, const float sampleRate, const float frequency)
-	{
-		// 2*PI is a full rotation. n/sampleRate ensures that the full rotation happens at 1 Hz. frequency then changes the pitch of this "unit pitch".
-		return std::sinf((2.0f * PIf * n / sampleRate) * frequency);
-	}
-
-	inline double GenerateSineSample(const double n, const double sampleRate, const double frequency)
-	{
-		// 2*PI is a full rotation. n/sampleRate ensures that the full rotation happens at 1 Hz. frequency then changes the pitch of this "unit pitch".
-		return std::sin((2.0 * PI * n / sampleRate) * frequency);
-	}
-
-	inline std::vector<double> GenerateSineSignal(const double frequency, const double phaseOffset, const std::uint64_t duration)
-	{
-		std::vector<double> returnVal(duration, 0.0);
-
-		for (size_t i = 0; i < duration; i++)
-		{
-			returnVal[i] = std::sin((double)i * PI / frequency + phaseOffset);
-		}
-
-		return returnVal;
-	}
-
-	inline std::vector<float> GenerateSineSignal(const float frequency, const float phaseOffset, const std::uint64_t duration)
-	{
-		std::vector<float> returnVal(duration, 0.0f);
-
-		for (size_t i = 0; i < duration; i++)
-		{
-			returnVal[i] = std::sinf((float)i * PIf / frequency + phaseOffset);
-		}
-
-		return returnVal;
-	}
-
-	constexpr inline void ScaleSignal(std::vector<double>& signal, const double scalar)
-	{
-		for (auto& sample : signal)
-		{
-			sample *= scalar;
-		}
-	}
-
-	constexpr inline void ScaleSignal(std::vector<float>& signal, const float scalar)
-	{
-		for (auto& sample : signal)
-		{
-			sample *= scalar;
-		}
-	}
-
-	inline std::vector<float> WhiteNoise(const std::uint64_t N, const size_t seed)
-	{
-		static auto e = std::default_random_engine((unsigned int)seed);
-		static auto d = std::uniform_real_distribution<float>(-1.0f, 1.0f);
-
-		std::vector<float> returnVal(N);
-		for (size_t i = 0; i < N; ++i)
-		{
-			returnVal[i] = d(e);
-		}
-		return returnVal;
-	}
-
-	inline std::vector<float> GaussianWhiteNoise(const std::uint64_t N, const size_t seed)
-	{
-		static auto e = std::default_random_engine((unsigned int)seed);
-		static auto d = std::normal_distribution<float>(0.0f, 1.0f);
-
-		std::vector<float> returnVal(N);
-		for (size_t i = 0; i < N; ++i)
-		{
-			returnVal[i] = d(e);
-		}
-		return returnVal;
-	}
-
-	inline void DFT(std::vector<std::complex<float>>& out, const std::vector<float>& x, const std::uint64_t K)
-	{
-		const std::uint64_t N = (std::uint64_t)x.size();
-		std::vector<std::complex<float>>& y = out;
-
-		std::fill(y.begin(), y.end(), std::complex<float>(0.0f, 0.0f));
-
-		for (std::uint64_t k = 0; k < K; ++k)
-		{
-			for (std::uint64_t n = 0; n < N; ++n)
-			{
-				y[k] += x[n] * EulersFormula(-2.0f * PIf * k * n / N);
-			}
-		}
-	}
-
-	inline void IDFT(std::vector<float>& out, const std::vector<std::complex<float>>& y, const std::uint64_t N)
-	{
-		const std::uint64_t K = (std::uint64_t)y.size();
-		std::vector<float>& x = out;
-
-		std::fill(x.begin(), x.end(), 0.0f);
-
-		for (std::uint64_t n = 0; n < N; ++n)
-		{
-			for (std::uint64_t k = 0; k < K; ++k)
-			{
-				x[n] += (y[k] * EulersFormula(2.0f * PIf * k * n / N)).real();
-			}
-			x[n] /= N;
-			x[n] = std::clamp(x[n], -1.0f, 1.0f);
-		}
-	}
-
-	constexpr inline void InterleaveSignal(std::vector<double>& data, const std::uint64_t nrOfChannels)
-	{
-		const size_t len = data.size();
-		const std::vector<double> dataCopy = data;
-
-		std::vector<size_t> channelOffsets(nrOfChannels, 0);
-		for (size_t i = 0; i < nrOfChannels; i++)
-		{
-			channelOffsets[i] = len / nrOfChannels * i;
-		}
-
-		for (size_t i = 0; i < len / nrOfChannels; i++)
-		{
-			for (size_t chan = 0; chan < nrOfChannels; chan++)
-			{
-				data[nrOfChannels * i + chan] = dataCopy[channelOffsets[chan] + i];
-			}
-		}
-	}
-
-	constexpr inline void InterleaveSignal(std::vector<float>& data, const std::uint64_t nrOfChannels)
-	{
-		const size_t len = data.size();
-		const std::vector<float> dataCopy = data;
-
-		std::vector<size_t> channelOffsets(nrOfChannels, 0);
-		for (size_t i = 0; i < nrOfChannels; i++)
-		{
-			channelOffsets[i] = len / nrOfChannels * i;
-		}
-
-		for (size_t i = 0; i < len / nrOfChannels; i++)
-		{
-			for (size_t chan = 0; chan < nrOfChannels; chan++)
-			{
-				data[nrOfChannels * i + chan] = dataCopy[channelOffsets[chan] + i];
-			}
-		}
-	}
-
-	constexpr inline void UninterleaveSignal(std::vector<double>& data, const std::uint64_t nrOfChannels)
-	{
-		const auto len = data.size();
-		const auto singleChannelLen = data.size() / nrOfChannels;
-		std::vector<std::vector<double>> channels(nrOfChannels, std::vector<double>(singleChannelLen, 0.0f));
-
-		for (size_t i = 0; i < len; i += nrOfChannels)
-		{
-			for (size_t chan = 0; chan < nrOfChannels; chan++)
-			{
-				channels[chan][i / nrOfChannels] = data[i];
-			}
-		}
-
-		for (size_t i = 0; i < nrOfChannels; i++)
-		{
-			std::copy(channels[i].begin(), channels[i].end(), data.begin() + i * singleChannelLen);
-		}
-	}
-
-	constexpr inline void UninterleaveSignal(std::vector<float>& data, const std::uint64_t nrOfChannels)
-	{
-		const auto len = data.size();
-		const auto singleChannelLen = data.size() / nrOfChannels;
-		std::vector<std::vector<float>> channels(nrOfChannels, std::vector<float>(singleChannelLen, 0.0f));
-
-		for (size_t i = 0; i < len; i += nrOfChannels)
-		{
-			for (size_t chan = 0; chan < nrOfChannels; chan++)
-			{
-				channels[chan][i / nrOfChannels] = data[i];
-			}
-		}
-
-		for (size_t i = 0; i < nrOfChannels; i++)
-		{
-			std::copy(channels[i].begin(), channels[i].end(), data.begin() + i * singleChannelLen);
-		}
-	}
-
-	constexpr inline void SumSignalsInPlace(std::vector<double>& data0, const std::vector<double>& data1)
-	{
-		for (size_t i = 0; i < data1.size(); i++)
-		{
-			data0[i] += data1[i];
-		}
-	}
-
-	constexpr inline void SumSignalsInPlace(std::vector<float>& data0, const std::vector<float>& data1)
-	{
-		for (size_t i = 0; i < data1.size(); i++)
-		{
-			data0[i] += data1[i];
-		}
-	}
-
-	constexpr inline void InverseSignal(std::vector<double>& data)
-	{
-		for (auto& sample : data)
-		{
-			sample = -sample;
-		}
-	}
-
-	constexpr inline void InverseSignal(std::vector<float>& data)
-	{
-		for (auto& sample : data)
-		{
-			sample = -sample;
-		}
-	}
-
-	constexpr inline std::vector<double> ComputeSignalsDifference(const std::vector<double>& data0, const std::vector<double>& data1)
-	{
-		std::vector<double> returnVal = data0;
-		InverseSignal(returnVal);
-		SumSignalsInPlace(returnVal, data1);
-		return returnVal;
-	}
-
-	constexpr inline std::vector<float> ComputeSignalsDifference(const std::vector<float>& data0, const std::vector<float>& data1)
-	{
-		std::vector<float> returnVal = data0;
-		InverseSignal(returnVal);
-		SumSignalsInPlace(returnVal, data1);
-		return returnVal;
-	}
-
-	constexpr inline void ClampSignal(std::vector<double>& data)
-	{
-		for (auto& sample : data)
-		{
-			sample = std::clamp(sample, -1.0, 1.0);
-		}
-	}
-
-	constexpr inline void ClampSignal(std::vector<float>& data)
-	{
-		for (auto& sample : data)
-		{
-			sample = std::clamp(sample, -1.0f, 1.0f);
-		}
-	}
-
-	constexpr inline void NormalizeSignal(std::vector<double>& data)
-	{
-		const auto len = data.size();
-
-		// Find bounds.
-		double maxSample = std::numeric_limits<double>::min();
-		double minSample = std::numeric_limits<double>::max();
-		for (size_t sample = 0; sample < len; sample++)
-		{
-			const double currentSample = data[sample];
-			maxSample = maxSample < currentSample ? currentSample : maxSample;
-			minSample = minSample > currentSample ? currentSample : minSample;
-		}
-
-		// Normalize.
-		for (size_t sample = 0; sample < len; sample++)
-		{
-			data[sample] = RemapToRange(minSample, maxSample, -1.0, 1.0, data[sample]);
-		}
-	}
-
-	constexpr inline void NormalizeSignal(std::vector<float>& data)
-	{
-		const auto len = data.size();
-
-		// Find bounds.
-		float maxSample = std::numeric_limits<float>::min();
-		float minSample = std::numeric_limits<float>::max();
-		for (size_t sample = 0; sample < len; sample++)
-		{
-			const float currentSample = data[sample];
-			maxSample = maxSample < currentSample ? currentSample : maxSample;
-			minSample = minSample > currentSample ? currentSample : minSample;
-		}
-
-		// Normalize.
-		for (size_t sample = 0; sample < len; sample++)
-		{
-			data[sample] = RemapToRange(minSample, maxSample, -1.0f, 1.0f, data[sample]);
-		}
-	}
 }
+*/
